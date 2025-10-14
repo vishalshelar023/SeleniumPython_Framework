@@ -1,0 +1,77 @@
+from Library.FrameWork.Keywords import keywords as kw
+from Library.Excel.TestData import get_param
+
+# ----- UI XPaths -----
+xp_bt_login = "//button[@type='submit']"
+xp_tb_username = "//input[@name='username']"
+xp_tb_password = "//input[@name='password']"
+
+# ----- JSONPath Variables for API -----
+JP_statuscode = "$.status"
+JP_userid = "$.data.user.id"
+JP_token = "$.data.token"
+
+
+# ----- UI Function -----
+def login(username=None, password=None):
+    print("🔐 Into Login Function")
+
+    # Get test data if not passed
+    if not username:
+        username = get_param("TC_01.Para1")
+    if not password:
+        password = get_param("TC_01.Para2")
+
+    # Enter credentials
+    kw.kw_enter_text(xp_tb_username, username)
+    kw.kw_enter_text(xp_tb_password, password)
+
+    # Click login button
+    kw.kw_click_button(xp_bt_login)
+    kw.log_msg("✅ Login action performed successfully.")
+    # except Exception as e:
+    #     kw.log_msg(f"❌ Login failed: {str(e)}")
+    #     kw.fail_test_case(f"Login failed due to: {str(e)}")
+
+    # kw.kw_enter_text(xp_tb_email,"admin@yourstore.com")
+    # kw.kw_enter_text(xp_tb_password,"admin")
+    # kw.kw_click_button(xp_bt_login)
+    #kw.kw_click_button(xp_bt_login)
+
+
+# ----- API Function Example -----
+def get_user_details(user_id):
+    print("📡 Into Get User Details API Function")
+
+    endpoint = f"https://api.example.com/users/{user_id}"
+    headers = {"Authorization": "Bearer token123"}
+
+    # Call generic API GET function
+    response = kw.call_get_api(endpoint, headers, JP_userid)
+
+    # Validate response
+    kw.validate_json_value(response, JP_userid, expected_value=user_id)
+    kw.validate_status_code(response, JP_statuscode, expected_code=200)
+
+    kw.log_msg("✅ User details API validated successfully.")
+    return response
+
+
+def login_api(username, password):
+    print("📡 Into Login API Function")
+
+    endpoint = "https://api.example.com/login"
+    payload = {
+        "username": username,
+        "password": password
+    }
+
+    # Call generic API POST function
+    response = kw.call_post_api(endpoint, payload, JP_token)
+
+    # Validate token presence
+    kw.validate_json_value_exists(response, JP_token)
+    kw.validate_status_code(response, JP_statuscode, expected_code=200)
+
+    kw.log_msg("✅ Login API validated successfully.")
+    return response
