@@ -1,0 +1,97 @@
+from robot.api.deco import keyword, library
+from robot.libraries.BuiltIn import BuiltIn
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.common.by import By
+import os
+import logging
+
+from Library.FrameWork.Keywords.keywords import log_msg
+from Library.FrameWork.Utils.screenshot_utils import capture_and_embed_screenshot
+from webdriver_manager.chrome import ChromeDriverManager
+
+# Keep a global reference to prevent garbage collection
+_global_driver_reference = None
+
+@library(scope='GLOBAL')
+class Apptype_lib:
+    driver = None
+    #prevent_auto_close = False  # Flag to control auto-close behavior
+
+    def __init__(self):
+        BuiltIn().log_to_console(f"🆔 Apptype_lib instance created: {id(self)}")
+        BuiltIn().log_to_console(f"🔍 get_driver called from instance: {id(self)}")
+
+    def _capture_screenshot(self, name_prefix="error"):
+        if Apptype_lib.driver:
+            return capture_and_embed_screenshot(Apptype_lib.driver, name_prefix)
+        return None
+
+    def _log_screenshot(self, name_prefix="step"):
+        if Apptype_lib.driver:
+            capture_and_embed_screenshot(Apptype_lib.driver, name_prefix)
+
+    @keyword
+    def open_browser(self, apprun="web", WEB_URL="", ELECTRON_APP=""):
+        global _global_driver_reference  # Prevent GC
+        logging.info(f"open_browser called with: apprun={apprun}, WEB_URL={WEB_URL}, ELECTRON_APP={ELECTRON_APP}")
+        try:
+            if apprun.lower() == "electron":
+                if not ELECTRON_APP or not os.path.exists(ELECTRON_APP):
+                    raise FileNotFoundError(f"Electron app not found at: {ELECTRON_APP}")
+                options = Options()
+                options.binary_location = ELECTRON_APP
+                options.add_experimental_option("detach", True)
+                options.add_experimental_option("excludeSwitches", ["enable-automation"])
+                options.add_experimental_option("useAutomationExtension", False)
+                service = ChromeService(executable_path=ChromeDriverManager().install())
+                Apptype_lib.driver = webdriver.Chrome(service=service, options=options)
+
+            elif apprun.lower() == "web":
+                options = Options()
+                options.add_experimental_option("detach", True)
+                options.add_experimental_option("excludeSwitches", ["enable-automation"])
+                options.add_experimental_option("useAutomationExtension", False)
+                driver_path = "C:/SeleniumPython_FW/Driver/chromedriver.exe"
+                if not os.path.exists(driver_path):
+                    print(f"ChromeDriver not found at: {driver_path}. Using webdriver-manager to auto-download.")
+                    service = ChromeService(executable_path=ChromeDriverManager().install())
+                else:
+                    service = ChromeService(executable_path=driver_path)
+                    log_msg("apptype open_browser called with downloaded webdriver")
+
+                Apptype_lib.driver = webdriver.Chrome(service=service, options=options)
+                Apptype_lib.driver.maximize_window()
+
+                if WEB_URL:
+                    Apptype_lib.driver.get(WEB_URL)
+            else:
+                raise ValueError("Invalid apprun. Use 'web' or 'electron'.")
+
+            _global_driver_reference = Apptype_lib.driver  # Keep reference alive
+            self._log_screenshot("open_browser")
+        except Exception as e:
+            self._capture_screenshot("open_browser_failure")
+            logging.error(f"❌ Failed to launch browser: {str(e)}")
+            raise
+
+    @keyword
+    def close_app(self):
+        BuiltIn().log_to_console("🧹 close_app called")
+        caller = BuiltIn().get_variable_value("${SUITE_TEARDOWN}", default="None")
+        BuiltIn().log_to_console(f"🧹 close_app called by: {caller}")
+        if Apptype_lib.driver:
+            self._log_screenshot("before_close")
+            Apptype_lib.driver.quit()
+            Apptype_lib.driver = None
+            BuiltIn().log_to_console("✅ Browser closed successfully.")
+        else:
+            BuiltIn().log_to_console("⚠️ No browser instance to close.")
+
+    @keyword
+    def get_driver(self):
+        if Apptype_lib.driver is None:
+            BuiltIn().log("⚠️ No browser instance found.", level="WARN")
+            raise RuntimeError("WebDriver is not initialized. Call 'open_browser' first.")
+        return Apptype_lib.driver
