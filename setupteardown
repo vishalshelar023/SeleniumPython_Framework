@@ -1,0 +1,28 @@
+*** Settings ***
+Documentation     A resource file for managing browser and application setup/teardown.
+...               It uses a Python helper to handle conditional logic for debugger compatibility.
+
+Library    ../Library/FrameWork/Apptype_lib.py    WITH NAME    Apptype
+Library    ../Library/FrameWork/debug_helper.py           # Contains Get Browser Kwargs
+Library    ../Library/FrameWork/Keywords/keywords.py
+
+*** Variables ***
+# ${apptype}                  ${EMPTY}
+# ${WEB_URL}                  ${EMPTY}
+# ${ELECTRON_APP}             ${EMPTY}
+# ${ELECTRON_DRIVER_PATH}     ${EMPTY}
+# ${WEB_DRIVER_PATH}          ${EMPTY}
+
+*** Keywords ***
+Setup Browser
+    [Documentation]    Opens a browser or Electron app using a Python helper.
+    Log To Console    🔧 Setup Browser started
+    #Apptype.Prevent Auto Close    ${True}
+    &{kwargs}=    Get Browser Kwargs
+    Log To Console    🔧 Browser kwargs: ${kwargs}
+    Apptype.Open Browser    &{kwargs}
+    Log To Console    ✅ Browser should now be open
+
+Teardown Browser
+    [Documentation]    Closes the browser/application safely.
+    Run Keyword And Ignore Error    Apptype.Close App
